@@ -1,6 +1,8 @@
 package io.kestra.core.runners.pebble.functions;
 
 import io.kestra.core.runners.LocalPath;
+import io.kestra.core.storages.Namespace;
+import io.kestra.core.storages.NamespaceFile;
 import io.kestra.core.storages.StorageContext;
 import io.pebbletemplates.pebble.template.EvaluationContext;
 import jakarta.inject.Singleton;
@@ -8,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 @Singleton
 public class ReadFileFunction extends AbstractFileFunction {
@@ -23,6 +26,13 @@ public class ReadFileFunction extends AbstractFileFunction {
             }
             case LocalPath.FILE_SCHEME -> {
                 try (InputStream inputStream = localPathFactory.createLocalPath().get(path)) {
+                    yield new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+            case Namespace.NAMESPACE_FILE_SCHEME -> {
+                try (InputStream inputStream = namespaceFactory
+                    .of(tenantId, namespace, storageInterface)
+                    .getFileContent(NamespaceFile.normalize(Path.of(path.getPath()), true))) {
                     yield new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
                 }
             }

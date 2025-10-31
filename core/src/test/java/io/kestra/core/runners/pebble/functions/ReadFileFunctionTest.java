@@ -3,6 +3,8 @@ package io.kestra.core.runners.pebble.functions;
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.runners.LocalPath;
 import io.kestra.core.runners.VariableRenderer;
+import io.kestra.core.storages.Namespace;
+import io.kestra.core.storages.NamespaceFactory;
 import io.kestra.core.storages.StorageContext;
 import io.kestra.core.storages.StorageInterface;
 import io.kestra.core.utils.IdUtils;
@@ -17,7 +19,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -39,13 +43,13 @@ class ReadFileFunctionTest {
     @Inject
     StorageInterface storageInterface;
 
-    @Test
-    void readNamespaceFile() throws IllegalVariableEvaluationException, IOException {
-        String filePath = "file.txt";
-        storageInterface.createDirectory(MAIN_TENANT, NAMESPACE, URI.create(StorageContext.namespaceFilePrefix(NAMESPACE)));
-        storageInterface.put(MAIN_TENANT, NAMESPACE, URI.create(StorageContext.namespaceFilePrefix(NAMESPACE) + "/" + filePath), new ByteArrayInputStream("Hello from {{ flow.namespace }}".getBytes()));
+    @Inject
+    NamespaceFactory namespaceFactory;
 
-        String render = variableRenderer.render("{{ render(read('" + filePath + "')) }}", getVariables());
+    @Test
+    void readNamespaceFile() throws IllegalVariableEvaluationException, IOException, URISyntaxException {
+        URI nsFile = createNsFile(false, NAMESPACE, "Hello from {{ flow.namespace }}");
+        String render = variableRenderer.render("{{ render(read('" + nsFile.getPath() + "')) }}", getVariables());
         assertThat(render).isEqualTo("Hello from " + NAMESPACE);
     }
 
@@ -62,12 +66,9 @@ class ReadFileFunctionTest {
     }
 
     @Test
-    void readNamespaceFileWithNamespace() throws IllegalVariableEvaluationException, IOException {
-        String filePath = "file.txt";
-        storageInterface.createDirectory(MAIN_TENANT, NAMESPACE, URI.create(StorageContext.namespaceFilePrefix(NAMESPACE)));
-        storageInterface.put(MAIN_TENANT, NAMESPACE, URI.create(StorageContext.namespaceFilePrefix(NAMESPACE) + "/" + filePath), new ByteArrayInputStream("Hello but not from flow.namespace".getBytes()));
-
-        String render = variableRenderer.render("{{ read('" + filePath + "', namespace='" + NAMESPACE + "') }}", getVariables("different.namespace"));
+    void readNamespaceFileWithNamespace() throws IllegalVariableEvaluationException, IOException, URISyntaxException {
+        URI nsFile = createNsFile(false, "io.kestra.tests", "Hello but not from flow.namespace");
+        String render = variableRenderer.render("{{ read('" + nsFile.getPath() + "', namespace='" + NAMESPACE + "') }}", getVariables("different.namespace"));
         assertThat(render).isEqualTo("Hello but not from flow.namespace");
     }
 
@@ -230,8 +231,8 @@ class ReadFileFunctionTest {
     }
 
     @Test
-    void shouldProcessNamespaceFile() throws IOException, IllegalVariableEvaluationException {
-        URI file = createNsFile(false);
+    void shouldProcessNamespaceFile() throws IOException, IllegalVariableEvaluationException, URISyntaxException {
+        URI file = createNsFile(false, "io.kestra.tests", "Hello World");
         Map<String, Object> variables = Map.of(
             "flow", Map.of(
                 "id", "flow",
@@ -245,8 +246,8 @@ class ReadFileFunctionTest {
     }
 
     @Test
-    void shouldProcessNamespaceFileFromAnotherNamespace() throws IOException, IllegalVariableEvaluationException {
-        URI file = createNsFile(true);
+    void shouldProcessNamespaceFileFromAnotherNamespace() throws IOException, IllegalVariableEvaluationException, URISyntaxException {
+        URI file = createNsFile(true, "io.kestra.tests", "Hello World");
         Map<String, Object> variables = Map.of(
             "flow", Map.of(
                 "id", "flow",
@@ -286,11 +287,10 @@ class ReadFileFunctionTest {
         return tempFile.toPath().toUri();
     }
 
-    private URI createNsFile(boolean nsInAuthority) throws IOException {
-        String namespace = "io.kestra.tests";
-        String filePath = "file.txt";
-        storageInterface.createDirectory(MAIN_TENANT, namespace, URI.create(StorageContext.namespaceFilePrefix(namespace)));
-        storageInterface.put(MAIN_TENANT, namespace, URI.create(StorageContext.namespaceFilePrefix(namespace) + "/" + filePath), new ByteArrayInputStream("Hello World".getBytes()));
+    private URI createNsFile(boolean nsInAuthority, String namespace, String value) throws IOException, URISyntaxException {
+        String filePath = IdUtils.create() + "file.txt";
+        Namespace namespaceStorage = namespaceFactory.of(MAIN_TENANT, namespace, storageInterface);
+        namespaceStorage.putFile(Path.of("/" + filePath), new ByteArrayInputStream(value.getBytes()));
         return URI.create("nsfile://" + (nsInAuthority ? namespace : "") + "/" + filePath);
     }
 }

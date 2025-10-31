@@ -18,6 +18,7 @@ import io.kestra.core.queues.QueueException;
 import io.kestra.core.runners.RunContextFactory;
 import io.kestra.core.runners.TestRunnerUtils;
 import io.kestra.core.storages.InternalStorage;
+import io.kestra.core.storages.NamespaceFactory;
 import io.kestra.core.storages.StorageContext;
 import io.kestra.core.storages.StorageInterface;
 import jakarta.inject.Inject;
@@ -120,6 +121,8 @@ public class WorkingDirectoryTest {
     public static class Suite {
         @Inject
         StorageInterface storageInterface;
+        @Inject
+        NamespaceFactory namespaceFactory;
 
         public void success(TestRunnerUtils runnerUtils) throws TimeoutException, QueueException {
             Execution execution = runnerUtils.runOne(MAIN_TENANT, "io.kestra.tests", "working-directory", null,
@@ -166,7 +169,8 @@ public class WorkingDirectoryTest {
                 null,
                 storageContext,
                 storageInterface,
-                null
+                null,
+                namespaceFactory
             );
 
             URI uri = ((Map<String, String>) outputs.get("outputFiles")).values()
@@ -189,7 +193,8 @@ public class WorkingDirectoryTest {
                 null,
                 storageContext,
                 storageInterface,
-                null
+                null,
+                namespaceFactory
             );
 
             TaskRun taskRun = execution.getTaskRunList().get(1);
@@ -216,7 +221,8 @@ public class WorkingDirectoryTest {
                 null,
                 storageContext,
                 storageInterface,
-                null
+                null,
+                namespaceFactory
             );
             storage.deleteCacheFile("workingDir", null);
 

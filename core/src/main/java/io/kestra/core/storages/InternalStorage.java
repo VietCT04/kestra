@@ -1,5 +1,6 @@
 package io.kestra.core.storages;
 
+import io.kestra.core.repositories.NamespaceFileMetadataRepositoryInterface;
 import io.kestra.core.services.FlowService;
 import io.kestra.core.services.KVStoreService;
 import io.kestra.core.storages.kv.InternalKVStore;
@@ -33,6 +34,7 @@ public class InternalStorage implements Storage {
     private final Logger logger;
     private final StorageContext context;
     private final StorageInterface storage;
+    private final NamespaceFactory namespaceFactory;
     private final FlowService flowService;
 
     /**
@@ -41,8 +43,8 @@ public class InternalStorage implements Storage {
      * @param context The storage context.
      * @param storage The storage to delegate operations.
      */
-    public InternalStorage(StorageContext context, StorageInterface storage) {
-        this(LOG, context, storage, null);
+    public InternalStorage(StorageContext context, StorageInterface storage, NamespaceFactory namespaceFactory) {
+        this(LOG, context, storage, null, namespaceFactory);
     }
 
     /**
@@ -52,11 +54,12 @@ public class InternalStorage implements Storage {
      * @param context The storage context.
      * @param storage The storage to delegate operations.
      */
-    public InternalStorage(Logger logger, StorageContext context, StorageInterface storage, FlowService flowService) {
+    public InternalStorage(Logger logger, StorageContext context, StorageInterface storage, FlowService flowService, NamespaceFactory namespaceFactory) {
         this.logger = logger;
         this.context = context;
         this.storage = storage;
         this.flowService = flowService;
+        this.namespaceFactory = namespaceFactory;
     }
 
     /**
@@ -64,7 +67,7 @@ public class InternalStorage implements Storage {
      **/
     @Override
     public Namespace namespace() {
-        return new InternalNamespace(logger, context.getTenantId(), context.getNamespace(), storage);
+        return namespaceFactory.of(logger, context.getTenantId(), context.getNamespace(), storage);
     }
 
     /**
@@ -80,7 +83,7 @@ public class InternalStorage implements Storage {
                 context.getTenantId(), context.getNamespace() // from Tenant/Namespace
             );
         }
-        return new InternalNamespace(logger, context.getTenantId(), namespace, storage);
+        return namespaceFactory.of(logger, context.getTenantId(), namespace, storage);
     }
 
     /**

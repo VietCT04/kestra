@@ -1,5 +1,6 @@
 package io.kestra.core.storages;
 
+import io.kestra.core.models.namespaces.files.NamespaceFileMetadata;
 import io.kestra.core.utils.PathMatcherPredicate;
 
 import java.io.IOException;
@@ -37,19 +38,25 @@ public interface Namespace {
      */
     List<NamespaceFile> all() throws IOException;
 
-    /**
-     * Gets the URIs of all namespace files for the contextual namespace.
-     *
-     * @return The list of {@link URI}.
-     */
-    List<NamespaceFile> all(boolean includeDirectories) throws IOException;
+    default List<NamespaceFile> all(String containing) throws IOException {
+        return this.all(containing, true);
+    }
 
     /**
-     * Gets the URIs of all namespace files for the current namespace.
+     * Gets the URIs of all namespace files for the current namespace that contains the optional <code>containing</code> parameter.
      *
      * @return The list of {@link URI}.
      */
-    List<NamespaceFile> all(String prefix, boolean includeDirectories) throws IOException;
+    List<NamespaceFile> all(String containing, boolean includeDirectories) throws IOException;
+
+    /**
+     * Gets the URIs of all namespace files for the current namespace under the <code>parentPath</code>.
+     *
+     * @return The list of {@link URI}.
+     */
+    List<NamespaceFileMetadata> children(String parentPath, boolean recursive) throws IOException;
+
+    void move(Path source, Path target) throws Exception;
 
     /**
      * Gets a {@link NamespaceFile} for the given path and the current namespace.
@@ -57,7 +64,7 @@ public interface Namespace {
      * @param path the file path.
      * @return a new {@link NamespaceFile}
      */
-    NamespaceFile get(Path path);
+    NamespaceFile get(Path path) throws IOException;
 
     /**
      * Retrieves the URIs of all namespace files for the current namespace matching the given predicate.
@@ -91,6 +98,16 @@ public interface Namespace {
      * @throws IOException              if an error happens while accessing the file.
      */
     InputStream getFileContent(Path path) throws IOException;
+
+    /**
+     * Retrieves the metadata of the namespace file at the given path.
+     *
+     * @param path the file path.
+     * @return the {@link FileAttributes}.
+     */
+    FileAttributes getFileMetadata(Path path) throws IOException;
+
+    boolean exists(Path path) throws IOException;
 
     default NamespaceFile putFile(Path path, InputStream content) throws IOException, URISyntaxException {
         return putFile(path, content, Conflicts.OVERWRITE);
@@ -126,23 +143,22 @@ public interface Namespace {
     }
 
     /**
-     * Deletes namespaces directories at the given path.
-     *
-     * @param file the {@link NamespaceFile} to be deleted.
-     * @throws IOException if an error happens while performing the delete operation.
-     */
-    default boolean deleteDirectory(NamespaceFile file) throws IOException {
-        return delete(Path.of(file.path()));
-    }
-
-    /**
-     * Deletes any namespaces files at the given path.
+     * Soft-deletes any namespaces files at the given path.
      *
      * @param path the path to be deleted.
      * @return {@code true} if the file was deleted by this method; {@code false} if the file could not be deleted because it did not exist
      * @throws IOException if an error happens while performing the delete operation.
      */
     boolean delete(Path path) throws IOException;
+
+    /**
+     * Hard-deletes any namespaces files.
+     *
+     * @param namespaceFile the namespace file to be purged.
+     * @return {@code true} if the file was purged by this method; {@code false} if the file could not be deleted because it did not exist
+     * @throws IOException if an error happens while performing the delete operation.
+     */
+    boolean purge(NamespaceFile namespaceFile) throws IOException;
 
     /**
      * Checks if a directory is empty.
