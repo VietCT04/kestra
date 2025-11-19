@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import io.kestra.core.exceptions.InternalException;
 import io.kestra.core.models.HasUID;
 import io.kestra.core.models.annotations.PluginProperty;
+import io.kestra.core.models.flows.check.Check;
 import io.kestra.core.models.flows.sla.SLA;
 import io.kestra.core.models.listeners.Listener;
 import io.kestra.core.models.tasks.FlowableTask;
@@ -129,6 +130,10 @@ public class Flow extends AbstractFlow implements HasUID {
     @Valid
     @PluginProperty
     List<SLA> sla;
+    
+    @Valid
+    @PluginProperty
+    List<Check> checks;
 
     public Stream<String> allTypes() {
         return Stream.of(
